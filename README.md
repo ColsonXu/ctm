@@ -1,11 +1,5 @@
 # Concurrent Task Manager (CTM)
 
-Team members:
-
-- Colson Xu
-- Yiyang Liu
-- Chengzi Cao
-
 ## Demo Link
 https://youtu.be/_eAdfxgVTLc
 
@@ -179,43 +173,3 @@ As mentioned before, the backend has two ideas for implementation. Half of the t
 - In the early phase of the development, it is important to have a good design first. Especially if different teams are developing different part of the program. Having a good interface/trait in place can make sure that the end product can work together as intended.
 - Although writing Rust programs can seem intimidating and disorientating for newcomers. It is actually easier than Python for large projects once you get the basics down. When writing Python, I constantly feel like I have to keep multiple moving parts in my mind. I have to know which part is of which type, how I can modify it, and when I can modify it. One misstep and the entire program can crash with a helplessly simple error message. Rust compiler will not only take care of the types for me, it also gives the move comprehensive and actionable error message I have ever seen. Actionable is a strange word to use on an error message, but I certainly feel like the Rust compile is teaching me how to write safe program. More often than not, it will just tell me how to fix the problem.
 - The Rust ecosystem is still far from complete. Especially in the UI domain. Neither TUI nor GUI has a really comprehensive crate. This could be a great area for personal projects.
-
-# Async Version
-As the development of this program was split into implementing two designs in the early stage, the async team has also done significant work and has a working program as opposed to an abandoned one. As such, they decided to answer some of the questions separately here.
-
-![ctm_async structure](/docs/img/async_struct.png)
-#### Code structure of the code (what are the main components, the module dependency structure). Why was the project modularized in this way?
-The main.rs initializes the necessary resources and starts the main executor function along with the UI components mentioned earlier. Below are the main components in the main.rs:
-
-- `my_executor`: The main function for managing tasks. It spawns the UI task and the accept_outputs task, which are responsible for handling user inputs and processing the outputs from worker threads respectively.
-
-- `accept_outputs`: This function processes the outputs from the worker threads and updating the task list and task results. It spawns two sub-tasks, update_task_list and update_task_result.
-
-- `update_task_list`: This function updates the task list with the task IDs and corresponding thread IDs for the worker threads.
-
-- `update_task_result`: This function is responsible for updating the task results hashmap with the latest results from the worker threads.
-
-The `lib.rs` file contains the implementation of the Tasks struct, the functions associated with it. The main components of `lib.rs` are:
-
-- `Tasks` struct: It stores a command queue and a history of executed commands, both of which are thread-safe data structures wrapped in `Arc<Mutex<>>`.
-
-- `thread_function`: This function is executed by worker threads. It constantly checks for new tasks in the command queue, processes them, and sends the results back to the main executor.
-
-- `create_threads`: This function initializes worker threads by passing the necessary resources, like tasks, id_senders, output_senders, wrong_commands, and tx_wrong, to the thread_function.
-
-- `parse_command`: This function takes a command string and parses it into a Command object.
-
-- `run_command`: This function takes a task and executes the associated command. If the command is executed successfully, it sends the output to the main executor. If there is an error, it adds the task ID to the wrong_commands HashSet and sends the updated HashSet through the tx_wrong channel.
-
-
-### Were any parts of the code particularly difficult to express using Rust? What are the challenges in refining and/or refactoring this code to be a better example of idiomatic Rust?
-The mixing of asynchronous and synchronous concurrency implementation in the code is challenging. We have to decide when to block the process and when not to. For example, the detection of wrong commands is designed to be blocked as we need to prevent these commands from adding to the result hashmap and therefore leads to a None in the entry and cannot be distinguished from running commands. On the other hand, we apply async on I/O to save the cost of using extra threads. As async programming tends to be more efficient for I/O-bound tasks, while concurrency is more suitable for CPU-bound tasks. 
-
-Asynchronous concurrency in Rust is typically handled using async/await, while synchronous concurrency often uses threads and synchronization primitives like mutexes and channels. They have different paradigms for managing shared state and executing tasks. 
-
-### Describe any approaches attempted and then abandoned and the reasons why. What did you learn by undertaking this project?
-We planned to use sync for the whole project until we found the infinite loop of addressing input will block other executions. This makes us turn to async to lower the cost of concurrency. 
-
-The second example is about the wrong commands. We decided to ignore the deprecated commands as they seemed to be trivial. Later we found that without distinguishing wrong commands from other commands results in the blocking and mismatching display of outputs. 
-
-Thus, we learned that it is critical to have a detailed design before writing code for a project like this. Neglecting the design phase can result in unnecessary rewriting and wasted effort, as unforeseen issues may arise during implementation. By thoroughly planning the design beforehand, we can avoid potential pitfalls and reduce code refactoring. 
